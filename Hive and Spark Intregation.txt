@@ -1,0 +1,195 @@
+++++++++++++++Spark and Hive Intregation++++++++++++++
+Open Two Shells (Putty, Mobaxterm)
+
+hadoop dfsadmin -safemode leave
+
+==============================
+Go to Hive shell --   hive
+==============================
+
+create database zeyospark;
+use zeyospark;
+
+
+create  table txnrecords(txnno INT, txndate STRING, custno INT, amount DOUBLE,category STRING, product STRING, city STRING, state STRING, spendby STRING)  row format delimited fields terminated by ',' lines terminated by '\n' stored as textfile;
+
+load data local inpath '/home/cloudera/data/txns' into table txnrecords;
+
+==============================
+Go to Spark shell --    spark-shell
+==============================
+
+val df = spark.sql("select * from zeyospark.txnrecords where txnno>50000")
+df.show()
+
+val df1 = spark.table("zeyospark.txnrecords")
+df1.show()
+
+val resultdf=df.groupBy("category").agg(sum("amount").as("sum_amount"))
+resultdf.write.format("parquet").saveAsTable("zeyospark.category_total")
+
+Query fron hive shell:
+==========================
+
+select * from zeyospark.category_total limit 10;
+
+Output is given as:
+2022-04-02 04:30:19 WARN  Utils:66 - Set SPARK_LOCAL_IP if you need to bind to another address
+2022-04-02 04:30:20 WARN  NativeCodeLoader:62 - Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+Setting default log level to "WARN".
+To adjust logging level use sc.setLogLevel(newLevel). For SparkR, use setLogLevel(newLevel).
+Spark context Web UI available at http://192.168.56.101:4040
+Spark context available as 'sc' (master = local[*], app id = local-1648899039552).
+Spark session available as 'spark'.
+Welcome to
+      ____              __
+     / __/__  ___ _____/ /__
+    _\ \/ _ \/ _ `/ __/  '_/
+   /___/ .__/\_,_/_/ /_/\_\   version 2.3.1
+      /_/
+
+Using Scala version 2.11.8 (Java HotSpot(TM) 64-Bit Server VM, Java 1.8.0_141)
+Type in expressions to have them evaluated.
+Type :help for more information.
+
+scala> val df = spark.sql("select * from zeyospark.txnrecords where txnno>50000")
+2022-04-02 04:31:12 WARN  DomainSocketFactory:117 - The short-circuit local reads feature cannot be used because libhadoop cannot be loaded.
+df: org.apache.spark.sql.DataFrame = [txnno: int, txndate: string ... 7 more fields]
+
+scala> df.show()
++-----+----------+-------+------+------------------+------------------+--------------+----------+-------+
+|txnno|   txndate| custno|amount|          category|           product|          city|     state|spendby|
++-----+----------+-------+------+------------------+------------------+--------------+----------+-------+
+|50001|06-10-2011|4004079| 189.9|             Games|Poker Chips & Sets|    Cincinnati|      Ohio| credit|
+|50002|01-30-2011|4009271| 92.19|       Team Sports|      Cheerleading|    Richmond  |  Virginia| credit|
+|50003|01-13-2011|4004362| 51.91|Exercise & Fitness|      Foam Rollers|   Westminster|  Colorado| credit|
+|50004|05-07-2011|4001893| 39.72|      Water Sports|          Swimming| San Francisco|California| credit|
+|50005|09-13-2011|4004986| 65.25|      Water Sports|          Wetsuits|   St. Louis  |  Missouri| credit|
+|50006|09-23-2011|4001921| 53.62|Outdoor Recreation| Deck Shuffleboard|      New York|  New York| credit|
+|50007|12-30-2011|4001394| 61.99|       Team Sports|  Beach Volleyball|        Denton|     Texas| credit|
+|50008|01-21-2011|4000091|158.96|Exercise & Fitness|        Jump Ropes|     Lexington|  Kentucky| credit|
+|50009|04-25-2011|4009875| 78.73|      Water Sports|          Wetsuits|         Miami|   Florida| credit|
+|50010|01-02-2011|4006780|110.81|Outdoor Recreation|     Track & Field|    Scottsdale|   Arizona| credit|
+|50011|05-24-2011|4008179| 25.04|             Games|       Board Games|         Salem|    Oregon| credit|
+|50012|10-22-2011|4007031|167.16|     Combat Sports|         Wrestling|St. Petersburg|   Florida| credit|
+|50013|01-11-2011|4006003|141.01|      Indoor Games|Table Shuffleboard|St. Petersburg|   Florida| credit|
+|50014|05-19-2011|4005445|167.38|     Combat Sports|            Boxing|       Gilbert|   Arizona| credit|
+|50015|06-20-2011|4003433|166.87|           Puzzles|    Jigsaw Puzzles|       Chicago|  Illinois| credit|
+|50016|06-03-2011|4008571| 30.17|Outdoor Recreation|       Motorsports|        Irvine|California| credit|
+|50017|08-14-2011|4006490|112.76|Outdoor Recreation|         Disc Golf|        Newark|New Jersey| credit|
+|50018|05-26-2011|4009463|148.37|      Water Sports|          Swimming|     Sunnyvale|California| credit|
+|50019|02-13-2011|4009115|126.19|       Team Sports|            Hockey|       Seattle|Washington| credit|
+|50020|11-30-2011|4005449| 23.38|        Air Sports|        Parachutes|         Plano|     Texas| credit|
++-----+----------+-------+------+------------------+------------------+--------------+----------+-------+
+only showing top 20 rows
+
+
+scala> val df1 = spark.table("zeyospark.txnrecords")
+df1: org.apache.spark.sql.DataFrame = [txnno: int, txndate: string ... 7 more fields]
+
+scala> df1.show()
++-----+----------+-------+------+--------------------+--------------------+--------------+--------------+-------+
+|txnno|   txndate| custno|amount|            category|             product|          city|         state|spendby|
++-----+----------+-------+------+--------------------+--------------------+--------------+--------------+-------+
+|    0|06-26-2011|4007024| 40.33|  Exercise & Fitness|Cardio Machine Ac...|   Clarksville|     Tennessee| credit|
+|    1|05-26-2011|4006742|198.44|  Exercise & Fitness|Weightlifting Gloves|    Long Beach|    California| credit|
+|    2|06-01-2011|4009775|  5.58|  Exercise & Fitness|Weightlifting Mac...|       Anaheim|    California| credit|
+|    3|06-05-2011|4002199|198.19|          Gymnastics|    Gymnastics Rings|     Milwaukee|     Wisconsin| credit|
+|    4|12-17-2011|4002613| 98.81|         Team Sports|        Field Hockey|   Nashville  |     Tennessee| credit|
+|    5|02-14-2011|4007591|193.63|  Outdoor Recreation|Camping & Backpac...|       Chicago|      Illinois| credit|
+|    6|10-28-2011|4002190| 27.89|             Puzzles|      Jigsaw Puzzles|    Charleston|South Carolina| credit|
+|    7|07-14-2011|4002964| 96.01|Outdoor Play Equi...|           Sandboxes|      Columbus|          Ohio| credit|
+|    8|01-17-2011|4007361| 10.44|       Winter Sports|        Snowmobiling|    Des Moines|          Iowa| credit|
+|    9|05-17-2011|4004798|152.46|             Jumping|      Bungee Jumping|St. Petersburg|       Florida| credit|
+|   10|05-29-2011|4004646|180.28|  Outdoor Recreation|             Archery|          Reno|        Nevada| credit|
+|   11|06-18-2011|4008071|121.39|Outdoor Play Equi...|          Swing Sets|      Columbus|          Ohio| credit|
+|   12|02-08-2011|4002473| 41.52|        Indoor Games|             Bowling| San Francisco|    California| credit|
+|   13|03-13-2011|4003268| 107.8|         Team Sports|        Field Hockey|    Honolulu  |        Hawaii| credit|
+|   14|02-25-2011|4004613| 36.81|          Gymnastics|     Vaulting Horses|   Los Angeles|    California| credit|
+|   15|10-20-2011|4003179|137.64|       Combat Sports|             Fencing|    Honolulu  |        Hawaii| credit|
+|   16|05-28-2011|4009135| 35.56|  Exercise & Fitness|    Free Weight Bars|      Columbia|South Carolina| credit|
+|   17|10-18-2011|4006679| 75.55|        Water Sports|Scuba Diving & Sn...|         Omaha|      Nebraska| credit|
+|   18|11-18-2011|4002444| 88.65|         Team Sports|            Baseball|Salt Lake City|          Utah| credit|
+|   19|08-28-2011|4008871| 51.81|        Water Sports|        Life Jackets|        Newark|    New Jersey| credit|
++-----+----------+-------+------+--------------------+--------------------+--------------+--------------+-------+
+only showing top 20 rows
+
+
+scala> val resultdf=df.groupBy("category").agg(sum("amount").as("sum_amount"))
+resultdf: org.apache.spark.sql.DataFrame = [category: string, sum_amount: double]
+
+scala> resultdf.write.format("parquet").saveAsTable("zeyospark.category_total")
+[Stage 3:>                                                        (0 + 1) / 200]SLF4J: Class path contains multiple SLF4J bindings.
+SLF4J: Found binding in [jar:file:/usr/local/spark/jars/parquet-format-2.3.1.jar!/shaded/parquet/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: Found binding in [jar:file:/usr/lib/parquet/lib/parquet-pig-bundle-1.5.0-cdh5.12.0.jar!/shaded/parquet/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: Found binding in [jar:file:/usr/lib/parquet/lib/parquet-hadoop-bundle-1.5.0-cdh5.12.0.jar!/shaded/parquet/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: Found binding in [jar:file:/usr/lib/parquet/lib/parquet-format-2.1.0-cdh5.12.0.jar!/shaded/parquet/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: Found binding in [jar:file:/usr/lib/hive/lib/hive-jdbc-1.1.0-cdh5.12.0-standalone.jar!/shaded/parquet/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: Found binding in [jar:file:/usr/lib/hive/lib/hive-exec-1.1.0-cdh5.12.0.jar!/shaded/parquet/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: See http://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J: Actual binding is of type [shaded.parquet.org.slf4j.helpers.NOPLoggerFactory]
+[Stage 3:===================================================>   (188 + 1) / 200]2022-04-02 04:53:24 WARN  DFSClient:611 - Caught exception
+java.lang.InterruptedException
+        at java.lang.Object.wait(Native Method)
+        at java.lang.Thread.join(Thread.java:1252)
+        at java.lang.Thread.join(Thread.java:1326)
+        at org.apache.hadoop.hdfs.DFSOutputStream$DataStreamer.closeResponder(DFSOutputStream.java:609)
+        at org.apache.hadoop.hdfs.DFSOutputStream$DataStreamer.endBlock(DFSOutputStream.java:370)
+        at org.apache.hadoop.hdfs.DFSOutputStream$DataStreamer.run(DFSOutputStream.java:546)
+[Stage 3:====================================================>  (192 + 1) / 200]2022-04-02 04:53:24 WARN  DFSClient:611 - Caught exception
+java.lang.InterruptedException
+        at java.lang.Object.wait(Native Method)
+        at java.lang.Thread.join(Thread.java:1252)
+        at java.lang.Thread.join(Thread.java:1326)
+        at org.apache.hadoop.hdfs.DFSOutputStream$DataStreamer.closeResponder(DFSOutputStream.java:609)
+        at org.apache.hadoop.hdfs.DFSOutputStream$DataStreamer.endBlock(DFSOutputStream.java:370)
+        at org.apache.hadoop.hdfs.DFSOutputStream$DataStreamer.run(DFSOutputStream.java:546)
+
+
+=================================================================================
+
+copy results from Hive shell:
+===========
+login as: cloudera
+cloudera@192.168.56.102's password:
+Last login: Tue Mar 29 08:07:04 2022 from 192.168.56.1
+[cloudera@quickstart ~]$ hive
+
+Logging initialized using configuration in file:/etc/hive/conf.dist/hive-log4j.properties
+WARNING: Hive CLI is deprecated and migration to Beeline is recommended.
+hive> create database zeyospark;
+OK
+Time taken: 2.777 seconds
+hive> use zeyospark;
+OK
+Time taken: 0.094 seconds
+hive> create  table txnrecords(txnno INT, txndate STRING, custno INT, amount DOUBLE,category STRING, p                                                       roduct STRING, city STRING, state STRING, spendby STRING)  row format delimited fields terminated by '                                                       ,' lines terminated by '\n' stored as textfile;
+OK
+Time taken: 0.776 seconds
+hive>
+    > load data local inpath '/home/cloudera/data/txns' into table txnrecords;
+Loading data to table zeyospark.txnrecords
+Table zeyospark.txnrecords stats: [numFiles=1, totalSize=8472067]
+OK
+Time taken: 1.376 seconds
+hive> select * from zeyospark.category_total limit 10;
+OK
+SLF4J: Class path contains multiple SLF4J bindings.
+SLF4J: Found binding in [jar:file:/usr/lib/parquet/lib/parquet-pig-bundle-1.5.0-cdh5.12.0.jar!/shaded/                                                       parquet/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: Found binding in [jar:file:/usr/lib/parquet/lib/parquet-hadoop-bundle-1.5.0-cdh5.12.0.jar!/shad                                                       ed/parquet/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: Found binding in [jar:file:/usr/lib/parquet/lib/parquet-format-2.1.0-cdh5.12.0.jar!/shaded/parq                                                       uet/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: Found binding in [jar:file:/usr/lib/hive/lib/hive-exec-1.1.0-cdh5.12.0.jar!/shaded/parquet/org/                                                       slf4j/impl/StaticLoggerBinder.class]
+SLF4J: Found binding in [jar:file:/usr/lib/hive/lib/hive-jdbc-1.1.0-cdh5.12.0-standalone.jar!/shaded/p                                                       arquet/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: See http://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J: Actual binding is of type [shaded.parquet.org.slf4j.helpers.NOPLoggerFactory]
+Gymnastics      311946.13
+Winter Sports   298795.66000000056
+Jumping 176760.8900000002
+Team Sports     572796.0100000006
+Air Sports      98705.80000000006
+Indoor Games    259715.26999999984
+Games   339716.30000000016
+Outdoor Play Equipment  263790.99000000075
+Water Sports    496075.45999999973
+Puzzles 57356.02000000002
+Time taken: 0.611 seconds, Fetched: 10 row(s)
